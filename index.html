@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Inspecciones · Verde Innova</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2220%22 fill=%22%231c5c37%22/><text x=%2250%22 y=%2265%22 font-size=%2255%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22sans-serif%22>VI</text></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <div class="fila">
+    <div class="marca">
+      <span class="logo">Verde Innova</span>
+    </div>
+    <span></span>
+  </div>
+  <div class="subtitulo">Inspecciones de calidad de producto</div>
+</header>
+
+<main class="contenedor">
+
+  <div id="avisoConfig" class="aviso aviso-ambar oculto">
+    Falta conectar esta app con tu Google Sheet. <a href="config.html">Configúralo aquí</a> (una sola vez).
+  </div>
+
+  <a class="tarjeta tarjeta-enlace" href="checklist.html">
+    <div class="tarjeta-opcion">
+      <div class="icono">👟</div>
+      <div class="texto">
+        <h2>Checklist de calzado por SKU</h2>
+        <p>Revisión punto por punto de cada estilo/color del packing list (etiquetas, embalaje, calidad de zapato).</p>
+      </div>
+      <div class="flecha">›</div>
+    </div>
+  </a>
+
+  <a class="tarjeta tarjeta-enlace" href="reporte.html">
+    <div class="tarjeta-opcion">
+      <div class="icono">📋</div>
+      <div class="texto">
+        <h2>Informe general de inspección</h2>
+        <p>Reporte completo del embarque: cajas muestreadas, muestreo, hallazgos, conclusión y firmas.</p>
+      </div>
+      <div class="flecha">›</div>
+    </div>
+  </a>
+
+  <a class="tarjeta tarjeta-enlace" href="config.html">
+    <div class="tarjeta-opcion">
+      <div class="icono">⚙️</div>
+      <div class="texto">
+        <h2>Configuración</h2>
+        <p>Conectar con Google Sheets, inspector por defecto y envíos pendientes.</p>
+      </div>
+      <div class="flecha">›</div>
+    </div>
+  </a>
+
+  <footer class="pie">
+    Los formularios se guardan en este dispositivo aunque no haya señal, y se envían solos cuando hay conexión.
+  </footer>
+
+</main>
+
+<script src="js/app.js"></script>
+<script>
+  const cfg = obtenerConfig();
+  if (!cfg.urlEnvio) document.getElementById('avisoConfig').classList.remove('oculto');
+</script>
+</body>
+</html>

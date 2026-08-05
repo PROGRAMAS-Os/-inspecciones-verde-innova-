@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Configuración · Inspecciones Verde Innova</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <div class="fila">
+    <a class="volver" href="index.html">←</a>
+    <h1>Configuración</h1>
+  </div>
+</header>
+
+<main class="contenedor">
+
+  <div class="tarjeta">
+    <h2>Conexión con Google Sheets</h2>
+    <p class="ayuda">
+      Pega aquí la URL de tu Google Apps Script (la obtienes al desplegarlo como aplicación web).
+      Instrucciones completas en <code>apps-script/INSTRUCCIONES.md</code> dentro del repositorio.
+    </p>
+    <div class="campo">
+      <label for="urlEnvio">URL del Web App</label>
+      <input type="url" id="urlEnvio" placeholder="https://script.google.com/macros/s/AKfycb.../exec">
+    </div>
+    <div class="acciones">
+      <button class="boton boton-primario" id="btnGuardar">Guardar</button>
+      <button class="boton boton-secundario" id="btnProbar">Probar conexión</button>
+    </div>
+    <p id="resultadoPrueba" class="pista"></p>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Valores por defecto</h2>
+    <p class="ayuda">Se rellenan automáticamente al abrir un nuevo formulario (puedes cambiarlos en cada inspección).</p>
+    <div class="campo">
+      <label for="inspectorDefault">Nombre del inspector</label>
+      <input type="text" id="inspectorDefault" placeholder="Osvaldo Villarreal">
+    </div>
+    <div class="campo">
+      <label for="clienteDefault">Cliente / Director habitual</label>
+      <input type="text" id="clienteDefault" placeholder="Ej. Akstrom Imports Inc.">
+    </div>
+    <button class="boton boton-primario" id="btnGuardarDefaults">Guardar valores por defecto</button>
+  </div>
+
+  <div class="tarjeta">
+    <h2>Envíos pendientes</h2>
+    <p class="ayuda">Inspecciones guardadas en este dispositivo que aún no se han podido enviar al Google Sheet (por falta de señal o de configuración).</p>
+    <div id="listaCola"></div>
+    <div class="acciones" style="margin-top:10px;">
+      <button class="boton boton-primario" id="btnReintentar">Reintentar envío ahora</button>
+    </div>
+  </div>
+
+  <footer class="pie">Verde Innova — Inspecciones de calidad</footer>
+</main>
+
+<script src="js/app.js"></script>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const cfg = obtenerConfig();
+  $('urlEnvio').value = cfg.urlEnvio || '';
+  $('inspectorDefault').value = cfg.inspectorDefault || '';
+  $('clienteDefault').value = cfg.clienteDefault || '';
+
+  $('btnGuardar').addEventListener('click', () => {
+    const actual = obtenerConfig();
+    actual.urlEnvio = $('urlEnvio').value.trim();
+    guardarConfig(actual);
+    $('resultadoPrueba').textContent = 'Guardado.';
+    $('resultadoPrueba').style.color = '';
+  });
+
+  $('btnGuardarDefaults').addEventListener('click', () => {
+    const actual = obtenerConfig();
+    actual.inspectorDefault = $('inspectorDefault').value.trim();
+    actual.clienteDefault = $('clienteDefault').value.trim();
+    guardarConfig(actual);
+    alert('Valores por defecto guardados.');
+  });
+
+  $('btnProbar').addEventListener('click', async () => {
+    const actual = obtenerConfig();
+    actual.urlEnvio = $('urlEnvio').value.trim();
+    guardarConfig(actual);
+    $('resultadoPrueba').textContent = 'Probando…';
+    try {
+      const r = await enviarAlBackend({ tipo: 'ping', creado: new Date().toISOString() });
+      $('resultadoPrueba').textContent = '✔ Conectado correctamente: ' + JSON.stringify(r);
+      $('resultadoPrueba').style.color = 'var(--verde-700)';
+    } catch (e) {
+      $('resultadoPrueba').textContent = '✘ No se pudo conectar: ' + e.message;
+      $('resultadoPrueba').style.color = 'var(--rojo)';
+    }
+  });
+
+  function pintarCola() {
+    const cola = obtenerCola();
+    const cont = $('listaCola');
+    if (cola.length === 0) {
+      cont.innerHTML = '<p class="mensaje-vacio">No hay envíos pendientes.</p>';
+      return;
+    }
+    cont.innerHTML = cola.map((item) => `
+      <div class="fila-dinamica">
+        <strong>${item.payload.tipo === 'checklist_sku' ? 'Checklist SKU' : 'Reporte general'}</strong>
+        <div class="pista">Creado: ${formatoFechaHora(item.creado)} · Error: ${item.ultimoError || '—'}</div>
+      </div>
+    `).join('');
+  }
+  pintarCola();
+
+  $('btnReintentar').addEventListener('click', async () => {
+    $('btnReintentar').disabled = true;
+    $('btnReintentar').textContent = 'Enviando…';
+    const r = await reintentarCola();
+    $('btnReintentar').disabled = false;
+    $('btnReintentar').textContent = 'Reintentar envío ahora';
+    pintarCola();
+    alert(`Enviados: ${r.enviados}. Restantes: ${r.restantes}.`);
+  });
+</script>
+</body>
+</html>

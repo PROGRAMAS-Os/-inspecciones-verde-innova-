@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Informe general de inspección · Verde Innova</title>
+<link rel="stylesheet" href="css/app.css">
+<style>
+  .firma-caja { border: 1px dashed var(--linea); border-radius: var(--radio-sm); background: #fff; touch-action: none; width: 100%; height: 130px; display:block; }
+  .firma-envoltorio { position: relative; margin-bottom: 6px; }
+  .firma-pista { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color: var(--tinta-suave); font-size:12px; pointer-events:none; }
+</style>
+</head>
+<body>
+
+<header class="encabezado">
+  <div class="fila">
+    <a class="volver" href="index.html">←</a>
+    <h1>Informe general de inspección</h1>
+    <span id="indicadorConexion" class="estado-conexion">●</span>
+  </div>
+</header>
+
+<main class="contenedor">
+
+  <div class="pestanas" id="pestanas">
+    <button data-tab="general" class="activa">1 · General</button>
+    <button data-tab="cajas">2 · Cajas</button>
+    <button data-tab="muestreo">3 · Muestreo</button>
+    <button data-tab="hallazgos">4 · Hallazgos</button>
+    <button data-tab="conclusion">5 · Conclusión</button>
+    <button data-tab="fotos">Fotos</button>
+    <button data-tab="anomalias">Anomalías</button>
+    <button data-tab="medidas">Medidas</button>
+    <button data-tab="aprobacion">6 · Aprobación</button>
+  </div>
+
+  <!-- SECCIÓN 1 -->
+  <section data-panel="general" class="tarjeta">
+    <h2>Sección 1: Información general</h2>
+    <div class="rejilla-2">
+      <div class="campo"><label>Nombre del inspector</label><input type="text" id="g_inspector"></div>
+      <div class="campo"><label>Fecha de inspección</label><input type="date" id="g_fecha"></div>
+      <div class="campo"><label>Ubicación</label><input type="text" id="g_ubicacion" placeholder="Ej. Zona Libre de Colón"></div>
+      <div class="campo"><label>Cliente / Director</label><input type="text" id="g_cliente"></div>
+      <div class="campo"><label>Consignatario / Comprador</label><input type="text" id="g_consignatario"></div>
+      <div class="campo"><label>Tipo de producto</label><input type="text" id="g_tipoProducto" placeholder="Ej. Zapatillas"></div>
+      <div class="campo"><label>Cantidad total del envío</label><input type="text" id="g_cantidadTotal" placeholder="Ej. 601 bultos"></div>
+      <div class="campo"><label>Cajas seleccionadas para inspección</label><input type="text" id="g_cajasSeleccionadas" placeholder="Cantidad o lista"></div>
+    </div>
+    <div class="campo"><label>Número de contenedor / sello (si lo hay)</label><input type="text" id="g_contenedorSello"></div>
+  </section>
+
+  <!-- SECCIÓN 2 -->
+  <section data-panel="cajas" class="tarjeta oculto">
+    <h2>Sección 2: Detalles de inspección de caja (por caja muestreada)</h2>
+    <p class="ayuda">Agrega una fila por cada caja/bulto muestreado.</p>
+    <div id="listaCajas"></div>
+    <button class="boton boton-secundario boton-bloque" id="btnAgregarCaja">+ Agregar caja</button>
+  </section>
+
+  <!-- SECCIÓN 3 -->
+  <section data-panel="muestreo" class="tarjeta oculto">
+    <h2>Sección 3: Método de muestreo</h2>
+    <div class="rejilla-2">
+      <div class="campo"><label>Base de muestreo</label><input type="text" id="m_base" placeholder="Ej. Aleatoria"></div>
+      <div class="campo"><label>Porcentaje de muestreo</label><input type="text" id="m_porcentaje" placeholder="Ej. 5.6%"></div>
+    </div>
+    <div class="campo"><label>Estándar seguido</label><input type="text" id="m_estandar" placeholder="Ej. ISO 2859-1, ANSI Z1.4, SOP del cliente"></div>
+    <div class="campo"><label>Método de selección</label><input type="text" id="m_metodo" placeholder="Ej. Estiba en cajas"></div>
+    <div class="campo"><label>Notas de números / bultos seleccionados</label><textarea id="m_notas" placeholder="Ej. 8, 15, 48, 78, 62, 129..."></textarea></div>
+  </section>
+
+  <!-- SECCIÓN 4 -->
+  <section data-panel="hallazgos" class="tarjeta oculto">
+    <h2>Sección 4: Hallazgos y observaciones</h2>
+    <div class="campo"><label>Integridad general del embalaje</label><textarea id="h_integridad"></textarea></div>
+    <div class="campo"><label>Presencia de daño o defecto</label><textarea id="h_dano"></textarea></div>
+    <div class="campo"><label>Consistencia de cantidad</label><input type="text" id="h_cantidad"></div>
+    <div class="campo"><label>Signos de manipulación o contaminación</label><input type="text" id="h_manipulacion"></div>
+    <div class="campo">
+      <label>¿Se tomó evidencia fotográfica?</label>
+      <div class="selector-estado" id="h_evidenciaFoto" style="max-width:220px;">
+        <button data-valor="SI">Sí</button>
+        <button data-valor="NO">No</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECCIÓN 5 -->
+  <section data-panel="conclusion" class="tarjeta oculto">
+    <h2>Sección 5: Conclusión y recomendaciones</h2>
+    <div class="campo"><label>Resumen de hallazgos</label><textarea id="c_resumen"></textarea></div>
+    <div class="campo"><label>Recomendación</label><textarea id="c_recomendacion"></textarea></div>
+    <div class="campo">
+      <label>Decisión</label>
+      <div class="selector-estado" id="c_decision">
+        <button data-valor="aceptado">Envío aceptado</button>
+        <button data-valor="parcial">Aceptación parcial</button>
+        <button data-valor="rechazado">Envío rechazado</button>
+      </div>
+    </div>
+    <div class="campo"><label>Medidas adicionales recomendadas (si las hubiera)</label><textarea id="c_medidasAdicionales"></textarea></div>
+  </section>
+
+  <!-- FOTOS -->
+  <section data-panel="fotos" class="tarjeta oculto">
+    <h2>Evidencia fotográfica</h2>
+    <p class="ayuda">Organizada por categoría, igual que en el formato original.</p>
+    <div id="categoriasFotos"></div>
+  </section>
+
+  <!-- ANOMALÍAS -->
+  <section data-panel="anomalias" class="tarjeta oculto">
+    <h2>Anomalías detectadas</h2>
+    <div id="listaAnomalias"></div>
+    <button class="boton boton-secundario boton-bloque" id="btnAgregarAnomalia">+ Agregar anomalía</button>
+  </section>
+
+  <!-- MEDIDAS -->
+  <section data-panel="medidas" class="tarjeta oculto">
+    <h2>Medidas</h2>
+    <div class="campo"><label>Medida del bulto (empaque master)</label><input type="text" id="med_bulto" placeholder="Ej. 50.5 x 77 x 38 cm"></div>
+    <div id="listaMedidas"></div>
+    <button class="boton boton-secundario boton-bloque" id="btnAgregarMedida">+ Agregar medida de caja / talla</button>
+  </section>
+
+  <!-- SECCIÓN 6 -->
+  <section data-panel="aprobacion" class="tarjeta oculto">
+    <h2>Sección 6: Aprobación</h2>
+
+    <h3 style="font-size:13px; color:var(--tinta-suave);">Inspector</h3>
+    <div class="campo"><label>Nombre</label><input type="text" id="a_inspectorNombre"></div>
+    <div class="campo">
+      <label>Firma</label>
+      <div class="firma-envoltorio">
+        <canvas class="firma-caja" id="firmaInspector"></canvas>
+        <span class="firma-pista" id="pistaFirmaInspector">Firma aquí con el dedo</span>
+      </div>
+      <button class="boton boton-chico boton-fantasma" id="btnLimpiarFirmaInspector">Borrar firma</button>
+    </div>
+    <div class="campo"><label>Fecha</label><input type="date" id="a_inspectorFecha"></div>
+
+    <h3 style="font-size:13px; color:var(--tinta-suave); margin-top:18px;">Representante del cliente (si está presente)</h3>
+    <div class="campo"><label>Nombre</label><input type="text" id="a_clienteNombre"></div>
+    <div class="campo">
+      <label>Firma</label>
+      <div class="firma-envoltorio">
+        <canvas class="firma-caja" id="firmaCliente"></canvas>
+        <span class="firma-pista" id="pistaFirmaCliente">Firma aquí con el dedo</span>
+      </div>
+      <button class="boton boton-chico boton-fantasma" id="btnLimpiarFirmaCliente">Borrar firma</button>
+    </div>
+    <div class="campo"><label>Fecha</label><input type="date" id="a_clienteFecha"></div>
+  </section>
+
+  <div style="height:90px;"></div>
+</main>
+
+<div class="barra-inferior">
+  <div class="fila">
+    <div class="info" id="infoGuardado">Guardado localmente</div>
+    <button class="boton boton-secundario" id="btnNuevoInforme">Nuevo</button>
+    <button class="boton boton-primario" id="btnEnviarInforme">Enviar informe</button>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/reporte.js"></script>
+</body>
+</html>

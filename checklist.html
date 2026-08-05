@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Checklist por SKU · Inspecciones Verde Innova</title>
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<header class="encabezado">
+  <div class="fila">
+    <a class="volver" href="index.html">←</a>
+    <h1>Checklist de calzado por SKU</h1>
+    <span id="indicadorConexion" class="estado-conexion">●</span>
+  </div>
+</header>
+
+<main class="contenedor">
+
+  <div class="tarjeta">
+    <h2>Datos del embarque</h2>
+    <div class="rejilla-2">
+      <div class="campo">
+        <label for="cliente">Cliente / Marca</label>
+        <input type="text" id="cliente" placeholder="Ej. HOKA">
+      </div>
+      <div class="campo">
+        <label for="referencia">Referencia / PO / Embarque No.</label>
+        <input type="text" id="referencia" placeholder="Ej. PO-48213">
+      </div>
+      <div class="campo">
+        <label for="fecha">Fecha de inspección</label>
+        <input type="date" id="fecha">
+      </div>
+      <div class="campo">
+        <label for="inspector">Inspector</label>
+        <input type="text" id="inspector" placeholder="Nombre del inspector">
+      </div>
+    </div>
+  </div>
+
+  <div class="tarjeta">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">Estilos a inspeccionar (SKU)</h2>
+      <button class="boton boton-chico boton-fantasma" id="btnEditarPlantilla">Editar checklist</button>
+    </div>
+    <p class="ayuda">Agrega cada estilo/color del packing list de este embarque. Puedes escribirlos a mano o pegar el packing list.</p>
+
+    <div class="acciones">
+      <button class="boton boton-primario" id="btnAgregarSku">+ Agregar SKU</button>
+      <button class="boton boton-secundario" id="btnImportar">Pegar packing list</button>
+    </div>
+
+    <div id="panelImportar" class="oculto" style="margin-top:14px;">
+      <div class="campo">
+        <label>Pega aquí las filas del packing list (copiadas desde Excel)</label>
+        <textarea class="paquete-lista" id="textoImportar" placeholder="Estilo	Descripción	Color	País origen	Cantidad
+1162011	Zapatilla mujer Rincon 4	Washed Blue	Indonesia	240"></textarea>
+        <p class="pista">Cada columna separada por tabulación (al copiar de Excel se pega así automáticamente). La primera fila puede ser encabezado.</p>
+      </div>
+      <button class="boton boton-secundario" id="btnAnalizarImportar">Previsualizar</button>
+      <div id="previsualizacionImportar"></div>
+    </div>
+
+    <div id="editorPlantilla" class="oculto" style="margin-top:14px; border-top:1px solid var(--linea); padding-top:14px;">
+    </div>
+
+    <div id="listaSku" class="lista-sku" style="margin-top:14px;"></div>
+    <p id="mensajeVacioSku" class="mensaje-vacio oculto">Aún no has agregado ningún estilo. Usa "Agregar SKU" o "Pegar packing list".</p>
+  </div>
+
+  <footer class="pie">Verde Innova — Inspecciones de calidad</footer>
+</main>
+
+<div id="detalleSku"></div>
+
+<script src="js/app.js"></script>
+<script src="js/checklist.js"></script>
+</body>
+</html>
