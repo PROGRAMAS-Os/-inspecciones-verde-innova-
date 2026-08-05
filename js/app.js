@@ -28,8 +28,13 @@ function generarId(prefijo) {
 
 // --- Configuración (URL del Apps Script, nombre del inspector por defecto) ---
 
+// URL del Google Apps Script ya desplegado — así la app funciona en cualquier
+// dispositivo sin configurar nada primero. Se puede cambiar desde Configuración
+// (por ejemplo si un día se conecta a otro Google Sheet).
+const URL_ENVIO_POR_DEFECTO = 'https://script.google.com/macros/s/AKfycbxy_cCYEaB3IHVB46lumRD2KL93OXvJUtYNMTgSPJJJSUh-S2rxmpW14JCLSb19xBXS/exec';
+
 function obtenerConfig() {
-  return leerJSON(CLAVES.CONFIG, { urlEnvio: '', inspectorDefault: '', clienteDefault: '' });
+  return leerJSON(CLAVES.CONFIG, { urlEnvio: URL_ENVIO_POR_DEFECTO, inspectorDefault: '', clienteDefault: '' });
 }
 
 function guardarConfig(config) {
