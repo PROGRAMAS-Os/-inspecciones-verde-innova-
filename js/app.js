@@ -96,7 +96,9 @@ async function enviarAlBackend(payload) {
     throw new Error('SIN_CONFIGURAR');
   }
   const controlador = new AbortController();
-  const tiempoFuera = setTimeout(() => controlador.abort(), 25000);
+  // El informe general genera además un Doc/PDF en el servidor (puede tardar
+  // más de 25s con varias fotos/secciones), así que el margen es generoso.
+  const tiempoFuera = setTimeout(() => controlador.abort(), 60000);
   let respuesta;
   try {
     respuesta = await fetch(urlEnvio, {
