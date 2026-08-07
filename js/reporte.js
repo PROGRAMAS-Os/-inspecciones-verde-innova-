@@ -21,6 +21,7 @@ function informeVacio() {
   return {
     id: generarId('rep'),
     idEnvio: null,
+    idioma: 'es',
     general: {
       inspector: cfg.inspectorDefault || '', fecha: new Date().toISOString().slice(0, 10), ubicacion: '',
       cliente: cfg.clienteDefault || '', referencia: '', consignatario: '', tipoProducto: '', cantidadTotal: '', cajasSeleccionadas: '', contenedorSello: '',
@@ -118,6 +119,16 @@ function cargarCamposSimples() {
   // Selectores de estado simples (evidencia fotográfica, decisión)
   configurarSelectorEstado($('h_evidenciaFoto'), informe.hallazgos.evidenciaFoto, (v) => { informe.hallazgos.evidenciaFoto = v; guardarInforme(informe); });
   configurarSelectorEstado($('c_decision'), informe.conclusion.decision, (v) => { informe.conclusion.decision = v; guardarInforme(informe); });
+
+  // Idioma del informe final (Doc/PDF)
+  const selIdioma = $('g_idioma');
+  if (selIdioma) {
+    selIdioma.value = informe.idioma || 'es';
+    selIdioma.addEventListener('change', () => {
+      informe.idioma = selIdioma.value;
+      guardarInforme(informe);
+    });
+  }
 }
 
 function configurarSelectorEstado(contenedor, valorActual, onCambio) {
@@ -465,6 +476,7 @@ function construirPayload(idEnvio, fotosPreparadas, anomaliasPreparadas) {
   return {
     tipo: 'reporte_general',
     idEnvio,
+    idioma: informe.idioma || 'es',
     general: informe.general,
     cajas: informe.cajas,
     muestreo: informe.muestreo,

@@ -253,6 +253,7 @@ function guardarReporteGeneral(datos) {
       bultoMedida: truncar((datos.medidas || {}).bulto, 200), filasMedidas,
       fotosPorCategoria, categoriasFotoEtiquetas: datos.categoriasFotoEtiquetas || {},
       firmaInspectorFoto, firmaClienteFoto, subcarpeta,
+      idioma: datos.idioma === 'en' ? 'en' : 'es',
     });
     docUrl = documento.docUrl;
     pdfUrl = documento.pdfUrl;
@@ -284,51 +285,112 @@ function guardarReporteGeneral(datos) {
 }
 
 // --- Documento final del informe (Google Doc + PDF) ---
+// El idioma del documento (d.idioma: 'es' | 'en') solo traduce las
+// etiquetas/encabezados fijos; el texto libre que escribió el inspector
+// (resúmenes, observaciones, etc.) viaja tal cual lo redactó.
 
-const ETIQUETAS_DECISION = { aceptado: 'Envío aceptado', parcial: 'Aceptación parcial', rechazado: 'Envío rechazado' };
+const TEXTOS_INFORME = {
+  es: {
+    tituloDoc: 'Informe de Inspección de Producto', tituloArchivo: 'Informe de Inspección - ',
+    seccion1: 'Sección 1: Información general',
+    campoInspector: 'Inspector', campoFechaInspeccion: 'Fecha de inspección', campoUbicacion: 'Ubicación',
+    campoCliente: 'Cliente / Director', campoReferencia: 'Referencia / PO', campoConsignatario: 'Consignatario / Comprador',
+    campoTipoProducto: 'Tipo de producto', campoCantidadTotal: 'Cantidad total del envío',
+    campoCajasSeleccionadas: 'Cajas seleccionadas para inspección', campoContenedorSello: 'Número de contenedor/sello',
+    seccion2: 'Sección 2: Detalles de inspección de caja',
+    colCajaNo: 'Caja No.', colCondExterna: 'Cond. externa', colEtiquetado: 'Etiquetado', colSellado: 'Sellado',
+    colCalidadCaja: 'Calidad caja', colCondUnidad: 'Cond. unidad', colObservaciones: 'Observaciones',
+    sinCajas: '(Sin cajas registradas.)',
+    seccion3: 'Sección 3: Método de muestreo',
+    campoBaseMuestreo: 'Base de muestreo', campoPorcentajeMuestreo: 'Porcentaje de muestreo', campoEstandar: 'Estándar seguido',
+    campoMetodo: 'Método de selección', campoNotas: 'Notas',
+    seccion4: 'Sección 4: Hallazgos y observaciones',
+    campoIntegridad: 'Integridad general del embalaje', campoDano: 'Presencia de daño o defecto',
+    campoConsistenciaCantidad: 'Consistencia de cantidad', campoManipulacion: 'Señales de manipulación/contaminación',
+    campoEvidenciaFoto: '¿Se tomó evidencia fotográfica?',
+    seccion5: 'Sección 5: Conclusión y recomendaciones',
+    campoResumen: 'Resumen de hallazgos', campoRecomendacion: 'Recomendación', campoDecision: 'Decisión',
+    campoMedidasAdicionales: 'Medidas adicionales recomendadas',
+    decision: { aceptado: 'Envío aceptado', parcial: 'Aceptación parcial', rechazado: 'Envío rechazado' },
+    evidenciaFotografica: 'Evidencia fotográfica', sinFotos: '(Sin fotos adjuntas.)', foto: 'Foto',
+    anomaliasDetectadas: 'Anomalías detectadas', sinDescripcion: '(sin descripción)', fotosPrefijo: '   Fotos: ', sinAnomalias: '(Sin anomalías registradas.)',
+    medidas: 'Medidas', medidaDelBulto: 'Medida del bulto: ', colTallaReferencia: 'Talla/referencia', colMedida: 'Medida',
+    seccion6: 'Sección 6: Aprobación', inspector: 'Inspector', representanteCliente: 'Representante del cliente',
+    nombre: 'Nombre: ', fecha: 'Fecha: ', sinFirma: '(Sin firma.)', errorFirma: '(No se pudo insertar la firma.)',
+  },
+  en: {
+    tituloDoc: 'Product Inspection Report', tituloArchivo: 'Inspection Report - ',
+    seccion1: 'Section 1: General Information',
+    campoInspector: 'Inspector', campoFechaInspeccion: 'Inspection date', campoUbicacion: 'Location',
+    campoCliente: 'Client / Director', campoReferencia: 'Reference / PO', campoConsignatario: 'Consignee / Buyer',
+    campoTipoProducto: 'Product type', campoCantidadTotal: 'Total shipment quantity',
+    campoCajasSeleccionadas: 'Boxes selected for inspection', campoContenedorSello: 'Container/seal number',
+    seccion2: 'Section 2: Box Inspection Details',
+    colCajaNo: 'Box No.', colCondExterna: 'Ext. condition', colEtiquetado: 'Labeling', colSellado: 'Sealing',
+    colCalidadCaja: 'Box quality', colCondUnidad: 'Unit condition', colObservaciones: 'Observations',
+    sinCajas: '(No boxes recorded.)',
+    seccion3: 'Section 3: Sampling Method',
+    campoBaseMuestreo: 'Sampling base', campoPorcentajeMuestreo: 'Sampling percentage', campoEstandar: 'Standard followed',
+    campoMetodo: 'Selection method', campoNotas: 'Notes',
+    seccion4: 'Section 4: Findings and Observations',
+    campoIntegridad: 'Overall packaging integrity', campoDano: 'Presence of damage or defect',
+    campoConsistenciaCantidad: 'Quantity consistency', campoManipulacion: 'Signs of tampering/contamination',
+    campoEvidenciaFoto: 'Was photo evidence taken?',
+    seccion5: 'Section 5: Conclusion and Recommendations',
+    campoResumen: 'Summary of findings', campoRecomendacion: 'Recommendation', campoDecision: 'Decision',
+    campoMedidasAdicionales: 'Additional recommended measures',
+    decision: { aceptado: 'Shipment accepted', parcial: 'Partial acceptance', rechazado: 'Shipment rejected' },
+    evidenciaFotografica: 'Photo evidence', sinFotos: '(No photos attached.)', foto: 'Photo',
+    anomaliasDetectadas: 'Anomalies detected', sinDescripcion: '(no description)', fotosPrefijo: '   Photos: ', sinAnomalias: '(No anomalies recorded.)',
+    medidas: 'Measurements', medidaDelBulto: 'Package measurement: ', colTallaReferencia: 'Size/reference', colMedida: 'Measurement',
+    seccion6: 'Section 6: Approval', inspector: 'Inspector', representanteCliente: 'Client representative',
+    nombre: 'Name: ', fecha: 'Date: ', sinFirma: '(No signature.)', errorFirma: '(Could not insert the signature.)',
+  },
+};
 
 function generarDocumentoInforme(d) {
-  const doc = DocumentApp.create('Informe de Inspección - ' + d.idInforme);
+  const t = TEXTOS_INFORME[d.idioma === 'en' ? 'en' : 'es'];
+  const doc = DocumentApp.create(t.tituloArchivo + d.idInforme);
   const body = doc.getBody();
   body.setMarginTop(36).setMarginBottom(36);
 
-  body.appendParagraph('Informe de Inspección de Producto').setHeading(DocumentApp.ParagraphHeading.TITLE);
+  body.appendParagraph(t.tituloDoc).setHeading(DocumentApp.ParagraphHeading.TITLE);
   body.appendParagraph(`${d.g.cliente || ''}${d.g.referencia ? ' · ' + d.g.referencia : ''}`).setHeading(DocumentApp.ParagraphHeading.SUBTITLE);
 
-  agregarSeccion(body, 'Sección 1: Información general', [
-    ['Inspector', d.g.inspector], ['Fecha de inspección', d.g.fecha], ['Ubicación', d.g.ubicacion],
-    ['Cliente / Director', d.g.cliente], ['Referencia / PO', d.g.referencia], ['Consignatario / Comprador', d.g.consignatario],
-    ['Tipo de producto', d.g.tipoProducto], ['Cantidad total del envío', d.g.cantidadTotal],
-    ['Cajas seleccionadas para inspección', d.g.cajasSeleccionadas], ['Número de contenedor/sello', d.g.contenedorSello],
+  agregarSeccion(body, t.seccion1, [
+    [t.campoInspector, d.g.inspector], [t.campoFechaInspeccion, d.g.fecha], [t.campoUbicacion, d.g.ubicacion],
+    [t.campoCliente, d.g.cliente], [t.campoReferencia, d.g.referencia], [t.campoConsignatario, d.g.consignatario],
+    [t.campoTipoProducto, d.g.tipoProducto], [t.campoCantidadTotal, d.g.cantidadTotal],
+    [t.campoCajasSeleccionadas, d.g.cajasSeleccionadas], [t.campoContenedorSello, d.g.contenedorSello],
   ]);
 
-  body.appendParagraph('Sección 2: Detalles de inspección de caja').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph(t.seccion2).setHeading(DocumentApp.ParagraphHeading.HEADING2);
   if (d.cajas.length) {
-    const encabezados = ['Caja No.', 'Cond. externa', 'Etiquetado', 'Sellado', 'Calidad caja', 'Cond. unidad', 'Observaciones'];
+    const encabezados = [t.colCajaNo, t.colCondExterna, t.colEtiquetado, t.colSellado, t.colCalidadCaja, t.colCondUnidad, t.colObservaciones];
     const filas = d.cajas.map((c) => [c.numero, c.condicionExterna, c.etiquetado, c.sellado, c.calidadCaja, c.condicionUnidad, c.observaciones]);
     const tabla = body.appendTable([encabezados].concat(filas));
     formatearTabla(tabla);
   } else {
-    body.appendParagraph('(Sin cajas registradas.)');
+    body.appendParagraph(t.sinCajas);
   }
 
-  agregarSeccion(body, 'Sección 3: Método de muestreo', [
-    ['Base de muestreo', d.mu.base], ['Porcentaje de muestreo', d.mu.porcentaje], ['Estándar seguido', d.mu.estandar],
-    ['Método de selección', d.mu.metodo], ['Notas', d.mu.notas],
+  agregarSeccion(body, t.seccion3, [
+    [t.campoBaseMuestreo, d.mu.base], [t.campoPorcentajeMuestreo, d.mu.porcentaje], [t.campoEstandar, d.mu.estandar],
+    [t.campoMetodo, d.mu.metodo], [t.campoNotas, d.mu.notas],
   ]);
 
-  agregarSeccion(body, 'Sección 4: Hallazgos y observaciones', [
-    ['Integridad general del embalaje', d.ha.integridad], ['Presencia de daño o defecto', d.ha.dano],
-    ['Consistencia de cantidad', d.ha.cantidad], ['Señales de manipulación/contaminación', d.ha.manipulacion],
-    ['¿Se tomó evidencia fotográfica?', d.ha.evidenciaFoto],
+  agregarSeccion(body, t.seccion4, [
+    [t.campoIntegridad, d.ha.integridad], [t.campoDano, d.ha.dano],
+    [t.campoConsistenciaCantidad, d.ha.cantidad], [t.campoManipulacion, d.ha.manipulacion],
+    [t.campoEvidenciaFoto, d.ha.evidenciaFoto],
   ]);
 
-  agregarSeccion(body, 'Sección 5: Conclusión y recomendaciones', [
-    ['Resumen de hallazgos', d.co.resumen], ['Recomendación', d.co.recomendacion],
-    ['Decisión', ETIQUETAS_DECISION[d.co.decision] || d.co.decision], ['Medidas adicionales recomendadas', d.co.medidasAdicionales],
+  agregarSeccion(body, t.seccion5, [
+    [t.campoResumen, d.co.resumen], [t.campoRecomendacion, d.co.recomendacion],
+    [t.campoDecision, t.decision[d.co.decision] || d.co.decision], [t.campoMedidasAdicionales, d.co.medidasAdicionales],
   ]);
 
-  body.appendParagraph('Evidencia fotográfica').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph(t.evidenciaFotografica).setHeading(DocumentApp.ParagraphHeading.HEADING2);
   const categoriasConFotos = Object.keys(d.fotosPorCategoria).filter((c) => d.fotosPorCategoria[c].length);
   if (categoriasConFotos.length) {
     categoriasConFotos.forEach((cat) => {
@@ -336,36 +398,36 @@ function generarDocumentoInforme(d) {
       const p = body.appendParagraph(etiqueta + ':');
       p.editAsText().setBold(true);
       d.fotosPorCategoria[cat].forEach((url, i) => {
-        const enlace = body.appendParagraph(`  Foto ${i + 1}`);
+        const enlace = body.appendParagraph(`  ${t.foto} ${i + 1}`);
         enlace.editAsText().setLinkUrl(url);
       });
     });
   } else {
-    body.appendParagraph('(Sin fotos adjuntas.)');
+    body.appendParagraph(t.sinFotos);
   }
 
-  body.appendParagraph('Anomalías detectadas').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph(t.anomaliasDetectadas).setHeading(DocumentApp.ParagraphHeading.HEADING2);
   if (d.anomalias.length) {
     d.anomalias.forEach((a, i) => {
-      const p = body.appendParagraph(`${i + 1}. ${a.descripcion || '(sin descripción)'}`);
+      const p = body.appendParagraph(`${i + 1}. ${a.descripcion || t.sinDescripcion}`);
       if (a.enlaces) {
-        const enlacePar = body.appendParagraph('   Fotos: ' + a.enlaces);
+        const enlacePar = body.appendParagraph(t.fotosPrefijo + a.enlaces);
       }
     });
   } else {
-    body.appendParagraph('(Sin anomalías registradas.)');
+    body.appendParagraph(t.sinAnomalias);
   }
 
-  body.appendParagraph('Medidas').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  if (d.bultoMedida) body.appendParagraph('Medida del bulto: ' + d.bultoMedida);
+  body.appendParagraph(t.medidas).setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  if (d.bultoMedida) body.appendParagraph(t.medidaDelBulto + d.bultoMedida);
   if (d.filasMedidas.length) {
-    const tabla = body.appendTable([['Talla/referencia', 'Medida']].concat(d.filasMedidas.map((m) => [m.etiqueta || '', m.medida || ''])));
+    const tabla = body.appendTable([[t.colTallaReferencia, t.colMedida]].concat(d.filasMedidas.map((m) => [m.etiqueta || '', m.medida || ''])));
     formatearTabla(tabla);
   }
 
-  body.appendParagraph('Sección 6: Aprobación').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  agregarFirma(body, 'Inspector', d.ap.inspectorNombre, d.ap.inspectorFecha, d.firmaInspectorFoto);
-  agregarFirma(body, 'Representante del cliente', d.ap.clienteNombre, d.ap.clienteFecha, d.firmaClienteFoto);
+  body.appendParagraph(t.seccion6).setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  agregarFirma(body, t.inspector, d.ap.inspectorNombre, d.ap.inspectorFecha, d.firmaInspectorFoto, t);
+  agregarFirma(body, t.representanteCliente, d.ap.clienteNombre, d.ap.clienteFecha, d.firmaClienteFoto, t);
 
   doc.saveAndClose();
 
@@ -375,7 +437,7 @@ function generarDocumentoInforme(d) {
   archivoDoc.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   const pdfBlob = archivoDoc.getAs('application/pdf');
-  const pdfFile = d.subcarpeta.createFile(pdfBlob).setName('Informe de Inspección - ' + d.idInforme + '.pdf');
+  const pdfFile = d.subcarpeta.createFile(pdfBlob).setName(t.tituloArchivo + d.idInforme + '.pdf');
   pdfFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   return { docUrl: archivoDoc.getUrl(), pdfUrl: pdfFile.getUrl() };
@@ -390,10 +452,10 @@ function agregarSeccion(body, titulo, pares) {
   });
 }
 
-function agregarFirma(body, rol, nombre, fecha, fotoFirma) {
+function agregarFirma(body, rol, nombre, fecha, fotoFirma, t) {
   body.appendParagraph(rol).setHeading(DocumentApp.ParagraphHeading.HEADING3);
-  body.appendParagraph('Nombre: ' + (nombre || '—'));
-  body.appendParagraph('Fecha: ' + (fecha || '—'));
+  body.appendParagraph(t.nombre + (nombre || '—'));
+  body.appendParagraph(t.fecha + (fecha || '—'));
   if (fotoFirma && fotoFirma.base64) {
     try {
       const bytes = Utilities.base64Decode(fotoFirma.base64);
@@ -401,10 +463,10 @@ function agregarFirma(body, rol, nombre, fecha, fotoFirma) {
       const img = body.appendImage(blob);
       img.setWidth(180).setHeight(80);
     } catch (e) {
-      body.appendParagraph('(No se pudo insertar la firma.)');
+      body.appendParagraph(t.errorFirma);
     }
   } else {
-    body.appendParagraph('(Sin firma.)');
+    body.appendParagraph(t.sinFirma);
   }
 }
 
