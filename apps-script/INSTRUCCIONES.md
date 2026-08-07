@@ -24,6 +24,7 @@ credenciales.
 1. Abre el archivo [`Code.gs`](Code.gs) de este repositorio.
 2. Copia **todo** su contenido y pégalo en el editor de Apps Script (reemplazando lo que había).
 3. Guarda con el ícono de disquete o `Ctrl+S`.
+4. En **Configuración del proyecto** (ícono de engranaje) → activa la casilla **"Mostrar el archivo de manifiesto 'appsscript.json' en el editor"**. Abre ese archivo y reemplaza su contenido con el de [`appsscript.json`](appsscript.json) de este repositorio (declara explícitamente los permisos de Sheets, Drive y Docs — sin esto, la generación automática del informe en Doc/PDF falla con un error de permisos aunque todo lo demás funcione).
 
 ## 4. Publica como aplicación web
 
@@ -36,6 +37,7 @@ credenciales.
 5. Google pedirá autorizar permisos (es tu propio script, sobre tu propio Sheet/Drive):
    - Si aparece "Google no ha verificado esta app", clic en **Configuración avanzada** → **Ir a [nombre del proyecto] (no seguro)** → **Permitir**. Es seguro: es tu propio código, en tu propia cuenta.
 6. Copia la **URL de la aplicación web** que te da (termina en `/exec`).
+7. Antes de usarla, verifica que el permiso de Google Docs haya quedado realmente concedido: en el editor, junto a los botones Ejecutar/Depurar, elige la función `guardarReporteGeneral` (o cualquier función de prueba que llame a `DocumentApp`) y presiona **Ejecutar** una vez. Si Google pide autorización, acéptala — así queda registrada correctamente para la app publicada. (Puedes confirmarlo en [myaccount.google.com/connections](https://myaccount.google.com/connections) → busca este proyecto → debe listar 3 permisos: Sheets, Drive y Docs.)
 
 ## 5. Configura el token de seguridad (importante)
 

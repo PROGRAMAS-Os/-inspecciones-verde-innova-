@@ -55,7 +55,7 @@ function escapeHtml(valor) {
 // URL del Google Apps Script ya desplegado — así la app funciona en cualquier
 // dispositivo sin configurar nada primero. Se puede cambiar desde Configuración
 // (por ejemplo si un día se conecta a otro Google Sheet).
-const URL_ENVIO_POR_DEFECTO = 'https://script.google.com/macros/s/AKfycbxy_cCYEaB3IHVB46lumRD2KL93OXvJUtYNMTgSPJJJSUh-S2rxmpW14JCLSb19xBXS/exec';
+const URL_ENVIO_POR_DEFECTO = 'https://script.google.com/macros/s/AKfycbzTANb5hevGdaRF-ELHpsEuiSmbw0OrPzFavI4EDo9J4nstp3nBffsoBET54eIomk2H/exec';
 
 // Token compartido para filtrar envíos automatizados/spam al backend. No es un
 // secreto real: al ser una app 100% de navegador, cualquiera que revise este
