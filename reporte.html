@@ -107,8 +107,12 @@
 
   <!-- FOTOS -->
   <section data-panel="fotos" class="tarjeta oculto">
-    <h2>Evidencia fotográfica</h2>
-    <p class="ayuda">Organizada por categoría, igual que en el formato original.</p>
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">Evidencia fotográfica</h2>
+      <button class="boton boton-chico boton-fantasma" id="btnEditarCategoriasFoto">Editar categorías</button>
+    </div>
+    <p class="ayuda">Organizada por categoría, igual que en el formato original. Ajusta las categorías si este cliente/embarque pide otras.</p>
+    <div id="editorCategoriasFoto" class="oculto" style="margin-bottom:14px; border-bottom:1px solid var(--linea); padding-bottom:14px;"></div>
     <div id="categoriasFotos"></div>
   </section>
 

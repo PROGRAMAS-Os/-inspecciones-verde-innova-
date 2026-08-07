@@ -174,6 +174,14 @@ $('btnAnalizarImportar').addEventListener('click', () => {
         </div>
       `).join('')}
     </div>
+    <div class="campo" style="margin-top:10px;">
+      <label>¿Cuántas filas inspeccionar? (déjalo vacío para revisar todas las marcadas)</label>
+      <div class="acciones">
+        <input type="number" min="1" id="tamanoMuestra" placeholder="Ej. 20" style="max-width:120px;">
+        <button class="boton boton-secundario boton-chico" id="btnAplicarMuestra">Elegir esa cantidad al azar</button>
+      </div>
+      <p class="pista">Marca/destilda filas a mano en la tabla, o usa esto para que la app elija al azar cuántas quieres revisar entre las filas válidas.</p>
+    </div>
     <div class="tabla-scroll">
       <table class="previsualizacion">
         <thead><tr><th></th>${encabezados.map((h) => `<th>${escapeHtml(h)}</th>`).join('')}</tr></thead>
@@ -189,6 +197,24 @@ $('btnAnalizarImportar').addEventListener('click', () => {
       <button class="boton boton-primario" id="btnConfirmarImportar">Crear los estilos marcados</button>
     </div>
   `;
+
+  $('btnAplicarMuestra').addEventListener('click', () => {
+    const n = Number($('tamanoMuestra').value);
+    const checks = Array.from(cont.querySelectorAll('.chkFilaImportar'));
+    if (!n || n <= 0) { alert('Escribe una cantidad mayor a 0.'); return; }
+    const validos = checks.filter((chk) => !pareceFilaBasura(datos[Number(chk.dataset.fila)]));
+    if (n >= validos.length) {
+      checks.forEach((chk) => { chk.checked = validos.includes(chk); });
+      alert(`Solo hay ${validos.length} fila(s) válida(s); se marcaron todas.`);
+      return;
+    }
+    checks.forEach((chk) => { chk.checked = false; });
+    const elegidos = new Set();
+    while (elegidos.size < n) {
+      elegidos.add(validos[Math.floor(Math.random() * validos.length)]);
+    }
+    elegidos.forEach((chk) => { chk.checked = true; });
+  });
 
   $('btnConfirmarImportar').addEventListener('click', () => {
     const selects = cont.querySelectorAll('.selMapeo');
@@ -525,17 +551,34 @@ async function enviarSku(sku) {
   }
   const boton = $('btnEnviarSku');
   boton.disabled = true;
-  boton.textContent = 'Enviando…';
 
+  const idEnvio = generarId('env');
   const plantilla = obtenerPlantilla();
+  const items = todosLosItems(plantilla);
+  const totalFotos = items.reduce((n, it) => n + ((sku.respuestas[it.id] || {}).fotos || []).length, 0);
+
+  const respuestas = [];
+  let fotosSubidas = 0;
+  for (const it of items) {
+    const r = sku.respuestas[it.id] || {};
+    let fotos = r.fotos || [];
+    if (fotos.length) {
+      boton.textContent = `Subiendo fotos ${fotosSubidas + 1}/${totalFotos}…`;
+      fotos = await subirFotosIndividualmente(fotos, idEnvio, it.id, () => {
+        fotosSubidas++;
+        boton.textContent = `Subiendo fotos ${Math.min(fotosSubidas + 1, totalFotos)}/${totalFotos}…`;
+      });
+    }
+    respuestas.push({ seccion: it.seccion, item: it.texto, estado: r.estado || '', comentario: r.comentario || '', fotos });
+  }
+
+  boton.textContent = 'Enviando…';
   const payload = {
     tipo: 'checklist_sku',
+    idEnvio,
     embarque: { cliente: embarque.cliente, referencia: embarque.referencia, fecha: embarque.fecha, inspector: embarque.inspector },
     sku: { estilo: sku.estilo, descripcion: sku.descripcion, color: sku.color, paisOrigen: sku.paisOrigen, cantidad: sku.cantidad },
-    respuestas: todosLosItems(plantilla).map((it) => {
-      const r = sku.respuestas[it.id] || {};
-      return { seccion: it.seccion, item: it.texto, estado: r.estado || '', comentario: r.comentario || '', fotos: r.fotos || [] };
-    }),
+    respuestas,
     enviado: new Date().toISOString(),
   };
 

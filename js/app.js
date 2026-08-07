@@ -137,11 +137,46 @@ function actualizarEstadoLocalPorIdEnvio(idEnvio) {
   }
 }
 
+// Sube una sola foto ya comprimida (via comprimirImagen) a una "carpeta"
+// lógica en Drive (normalmente el idEnvio de la inspección) y devuelve la
+// URL. Se usa para mandar cada foto por separado ANTES del envío principal
+// de datos, así el payload de datos queda liviano y cada foto puede
+// reintentarse por su cuenta con mala señal.
+async function subirFoto(foto, carpeta, etiqueta) {
+  const datos = await enviarAlBackend({ tipo: 'foto', carpeta, etiqueta, foto });
+  if (!datos || !datos.url) throw new Error('SIN_URL');
+  return datos.url;
+}
+
+// Intenta subir cada foto de una lista de forma individual (con un par de
+// reintentos rápidos). Las que lo logran quedan como {url}; las que no,
+// se dejan tal cual (con su base64) para que viajen dentro del envío
+// principal como respaldo, sin perder la foto.
+async function subirFotosIndividualmente(fotos, carpeta, etiquetaBase, onProgreso) {
+  const resultado = [];
+  for (let i = 0; i < fotos.length; i++) {
+    const foto = fotos[i];
+    if (foto.url) { resultado.push(foto); continue; }
+    let subida = null;
+    for (let intento = 0; intento < 2 && !subida; intento++) {
+      try {
+        const url = await subirFoto(foto, carpeta, `${etiquetaBase}_${i + 1}`);
+        subida = { url };
+      } catch (e) {
+        subida = null;
+      }
+    }
+    resultado.push(subida || foto);
+    if (onProgreso) onProgreso(i + 1, fotos.length);
+  }
+  return resultado;
+}
+
 // Intenta enviar un payload; si falla, lo deja en cola para reintentar después.
 // Devuelve tambien el idEnvio usado, para que quien llama pueda guardarlo junto
 // al registro local y así saber más tarde si ya se confirmó el envío.
 async function enviarOEncolar(payload) {
-  const idEnvio = generarId('env');
+  const idEnvio = payload.idEnvio || generarId('env');
   const payloadConId = { ...payload, idEnvio };
   const item = { id: idEnvio, payload: payloadConId, intentos: 0, creado: new Date().toISOString() };
   try {

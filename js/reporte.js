@@ -1,14 +1,20 @@
 // Informe general de inspección — basado en "Formulario de Inspeccion de Productos VI RINCON HOOKA.xlsx"
 
 const CLAVE_REPORTE_ACTUAL = 'vi_reporte_actual';
+const CLAVE_CATEGORIAS_FOTO = 'vi_categorias_foto_informe';
 
-const CATEGORIAS_FOTO = [
+const CATEGORIAS_FOTO_POR_DEFECTO = [
   { clave: 'estibaBultos', etiqueta: 'Estiba en bultos para su revisión' },
   { clave: 'numeracionBultos', etiqueta: 'Numeración de bultos' },
   { clave: 'estibaCajas', etiqueta: 'Estiba en cajas' },
   { clave: 'calidadZapatilla', etiqueta: 'Calidad de la zapatilla' },
   { clave: 'calidadEtiquetaCaja', etiqueta: 'Calidad de la etiqueta exterior de la caja' },
 ];
+
+function obtenerCategoriasFoto() {
+  return leerJSON(CLAVE_CATEGORIAS_FOTO, JSON.parse(JSON.stringify(CATEGORIAS_FOTO_POR_DEFECTO)));
+}
+function guardarCategoriasFoto(cats) { guardarJSON(CLAVE_CATEGORIAS_FOTO, cats); }
 
 function informeVacio() {
   const cfg = obtenerConfig();
@@ -23,7 +29,7 @@ function informeVacio() {
     muestreo: { base: '', porcentaje: '', estandar: '', metodo: '', notas: '' },
     hallazgos: { integridad: '', dano: '', cantidad: '', manipulacion: '', evidenciaFoto: '' },
     conclusion: { resumen: '', recomendacion: '', decision: '', medidasAdicionales: '' },
-    fotos: Object.fromEntries(CATEGORIAS_FOTO.map((c) => [c.clave, []])),
+    fotos: Object.fromEntries(obtenerCategoriasFoto().map((c) => [c.clave, []])),
     anomalias: [],
     medidas: { bulto: '', filas: [] },
     aprobacion: { inspectorNombre: '', inspectorFirma: '', inspectorFecha: '', clienteNombre: '', clienteFirma: '', clienteFecha: '' },
@@ -165,11 +171,21 @@ $('btnAgregarCaja').addEventListener('click', () => {
 
 // --- Fotos por categoría ---
 
+// Asegura que informe.fotos tenga una lista para cada categoría vigente
+// (por si se agregó una categoría nueva después de crear este informe).
+function sincronizarCategoriasFoto() {
+  obtenerCategoriasFoto().forEach((cat) => {
+    if (!informe.fotos[cat.clave]) informe.fotos[cat.clave] = [];
+  });
+}
+
 function renderFotos() {
+  sincronizarCategoriasFoto();
+  const categorias = obtenerCategoriasFoto();
   const cont = $('categoriasFotos');
-  cont.innerHTML = CATEGORIAS_FOTO.map((cat) => `
+  cont.innerHTML = categorias.map((cat) => `
     <div class="grupo-seccion">
-      <div class="titulo-seccion">${cat.etiqueta}</div>
+      <div class="titulo-seccion">${escapeHtml(cat.etiqueta)}</div>
       <div class="fotos-lista" data-cat="${cat.clave}">
         ${(informe.fotos[cat.clave] || []).map((f, i) => `
           <div class="foto-mini">
@@ -203,6 +219,77 @@ function renderFotos() {
       guardarInforme(informe);
       renderFotos();
     });
+  });
+}
+
+// --- Editor de categorías de fotos (ajustable por embarque) ---
+
+$('btnEditarCategoriasFoto').addEventListener('click', () => {
+  const panel = $('editorCategoriasFoto');
+  panel.classList.toggle('oculto');
+  if (!panel.classList.contains('oculto')) renderEditorCategoriasFoto();
+});
+
+function renderEditorCategoriasFoto() {
+  const categorias = obtenerCategoriasFoto();
+  const panel = $('editorCategoriasFoto');
+  panel.innerHTML = `
+    <p class="ayuda">Ajusta las categorías de evidencia fotográfica según lo que pida este cliente/embarque.</p>
+    ${categorias.map((c, i) => `
+      <div style="display:flex; gap:6px; align-items:center; margin:4px 0;">
+        <input type="text" value="${escapeHtml(c.etiqueta)}" class="inpCategoriaFoto" data-idx="${i}" style="flex:1;">
+        <button class="boton boton-chico boton-fantasma btnQuitarCategoriaFoto" data-idx="${i}">✕</button>
+      </div>
+    `).join('')}
+    <div class="acciones" style="margin-top:10px;">
+      <button class="boton boton-secundario boton-chico" id="btnAgregarCategoriaFoto">+ categoría</button>
+      <button class="boton boton-fantasma boton-chico" id="btnRestaurarCategoriasFoto">Restaurar categorías originales</button>
+    </div>
+    <div class="acciones" style="margin-top:10px;">
+      <button class="boton boton-secundario boton-chico" id="btnExportarCategoriasFoto">Exportar (archivo)</button>
+      <label class="boton boton-fantasma boton-chico" style="cursor:pointer;">
+        Importar (archivo)
+        <input type="file" accept="application/json" id="inputImportarCategoriasFoto" style="display:none;">
+      </label>
+    </div>
+  `;
+
+  const releer = () => obtenerCategoriasFoto();
+  const escribir = (c) => { guardarCategoriasFoto(c); renderEditorCategoriasFoto(); renderFotos(); };
+
+  panel.querySelectorAll('.inpCategoriaFoto').forEach((el) => el.addEventListener('change', () => {
+    const c = releer(); c[el.dataset.idx].etiqueta = el.value; escribir(c);
+  }));
+  panel.querySelectorAll('.btnQuitarCategoriaFoto').forEach((el) => el.addEventListener('click', () => {
+    const c = releer(); c.splice(el.dataset.idx, 1); escribir(c);
+  }));
+  $('btnAgregarCategoriaFoto').addEventListener('click', () => {
+    const c = releer(); c.push({ clave: generarId('cat'), etiqueta: 'Nueva categoría' }); escribir(c);
+  });
+  $('btnRestaurarCategoriasFoto').addEventListener('click', () => {
+    if (confirm('¿Restaurar las categorías originales? Se perderán tus cambios (las fotos ya agregadas no se borran, pero quedarán en categorías que ya no se muestran).')) {
+      escribir(JSON.parse(JSON.stringify(CATEGORIAS_FOTO_POR_DEFECTO)));
+    }
+  });
+  $('btnExportarCategoriasFoto').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(releer(), null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `categorias-fotos-informe-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  $('inputImportarCategoriasFoto').addEventListener('change', async (ev) => {
+    const archivo = ev.target.files[0];
+    if (!archivo) return;
+    try {
+      const nuevas = JSON.parse(await archivo.text());
+      if (!Array.isArray(nuevas)) throw new Error('formato inválido');
+      escribir(nuevas);
+    } catch (e) {
+      alert('No se pudo leer ese archivo como lista de categorías válida.');
+    }
   });
 }
 
@@ -374,20 +461,51 @@ function configurarFirma(canvasId, pistaId, campo) {
 
 // --- Envío ---
 
-function construirPayload() {
+function construirPayload(idEnvio, fotosPreparadas, anomaliasPreparadas) {
   return {
     tipo: 'reporte_general',
+    idEnvio,
     general: informe.general,
     cajas: informe.cajas,
     muestreo: informe.muestreo,
     hallazgos: informe.hallazgos,
     conclusion: informe.conclusion,
-    fotos: informe.fotos,
-    anomalias: informe.anomalias,
+    fotos: fotosPreparadas,
+    categoriasFotoEtiquetas: Object.fromEntries(obtenerCategoriasFoto().map((c) => [c.clave, c.etiqueta])),
+    anomalias: anomaliasPreparadas,
     medidas: informe.medidas,
     aprobacion: informe.aprobacion,
     enviado: new Date().toISOString(),
   };
+}
+
+// Sube (individualmente) todas las fotos de las categorías y de las
+// anomalías antes de armar el payload principal, para que ese payload
+// viaje liviano. Devuelve copias con las fotos que se lograron subir como
+// {url} y las que no, tal cual (como respaldo dentro del envío principal).
+async function subirTodasLasFotos(idEnvio, actualizarBoton) {
+  const categorias = Object.keys(informe.fotos);
+  const totalFotos = categorias.reduce((n, c) => n + informe.fotos[c].length, 0)
+    + informe.anomalias.reduce((n, a) => n + (a.fotos || []).length, 0);
+  let subidas = 0;
+  const avisar = () => actualizarBoton(subidas, totalFotos);
+
+  const fotosPreparadas = {};
+  for (const cat of categorias) {
+    fotosPreparadas[cat] = informe.fotos[cat].length
+      ? await subirFotosIndividualmente(informe.fotos[cat], idEnvio, cat, () => { subidas++; avisar(); })
+      : [];
+  }
+
+  const anomaliasPreparadas = [];
+  for (const a of informe.anomalias) {
+    const fotos = (a.fotos || []).length
+      ? await subirFotosIndividualmente(a.fotos, idEnvio, 'anomalia', () => { subidas++; avisar(); })
+      : [];
+    anomaliasPreparadas.push({ ...a, fotos });
+  }
+
+  return { fotosPreparadas, anomaliasPreparadas, totalFotos };
 }
 
 $('btnEnviarInforme').addEventListener('click', async () => {
@@ -401,8 +519,15 @@ $('btnEnviarInforme').addEventListener('click', async () => {
   }
   const boton = $('btnEnviarInforme');
   boton.disabled = true;
+  boton.textContent = 'Preparando…';
+
+  const idEnvio = generarId('env');
+  const { fotosPreparadas, anomaliasPreparadas, totalFotos } = await subirTodasLasFotos(idEnvio, (hechas, total) => {
+    boton.textContent = `Subiendo fotos ${Math.min(hechas + 1, total)}/${total}…`;
+  });
+
   boton.textContent = 'Enviando…';
-  const payload = construirPayload();
+  const payload = construirPayload(idEnvio, fotosPreparadas, anomaliasPreparadas);
   const resultado = await enviarOEncolar(payload);
   boton.disabled = false;
   boton.textContent = 'Enviar informe';

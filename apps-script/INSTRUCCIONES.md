@@ -81,6 +81,16 @@ Si en el futuro cambias `Code.gs` (por ejemplo para agregar una columna nueva):
 - Con estas pestañas puedes armar tablas dinámicas o gráficos directamente en el
   Sheet (por ejemplo: ítems marcados "NO" por estilo, para detectar defectos
   recurrentes de un proveedor).
+- Cada vez que se envía un **informe general**, el script genera automáticamente
+  un **Google Doc y un PDF** con el formato del informe (información general,
+  cajas, muestreo, hallazgos, conclusión, enlaces a fotos, anomalías, medidas y
+  firmas), los guarda en la misma carpeta del embarque, y deja los enlaces en las
+  columnas "Informe (Doc)" / "Informe (PDF)" de `Reportes_Generales`. Si algo
+  falla al generarlo, el resto del informe igual queda guardado — solo esa
+  columna mostrará el error.
+- Las fotos se suben una por una antes del envío principal de datos (para que
+  funcione mejor con señal débil); si alguna no logra subirse sola, viaja como
+  respaldo dentro del envío principal, así nunca se pierde.
 - El checklist por SKU y el informe general comparten el mismo campo
   **Referencia / PO**: úsalo igual en ambos formularios del mismo embarque para
   poder cruzar la información entre pestañas.
