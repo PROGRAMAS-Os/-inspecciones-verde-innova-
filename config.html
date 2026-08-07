@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Configuración · Inspecciones Verde Innova</title>
+<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -109,7 +110,8 @@
     cont.innerHTML = cola.map((item) => `
       <div class="fila-dinamica">
         <strong>${item.payload.tipo === 'checklist_sku' ? 'Checklist SKU' : 'Reporte general'}</strong>
-        <div class="pista">Creado: ${formatoFechaHora(item.creado)} · Error: ${item.ultimoError || '—'}</div>
+        <div class="pista">Creado: ${formatoFechaHora(item.creado)} · Intentos: ${item.intentos || 1} · Último error: ${escapeHtml(item.ultimoError || '—')}</div>
+        ${(item.intentos || 0) >= 5 ? '<div class="pista" style="color:var(--rojo);">Lleva varios intentos fallidos seguidos — si esto sigue, avisa para revisar la conexión con el Google Sheet.</div>' : ''}
       </div>
     `).join('');
   }

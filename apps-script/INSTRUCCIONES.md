@@ -37,13 +37,32 @@ credenciales.
    - Si aparece "Google no ha verificado esta app", clic en **Configuración avanzada** → **Ir a [nombre del proyecto] (no seguro)** → **Permitir**. Es seguro: es tu propio código, en tu propia cuenta.
 6. Copia la **URL de la aplicación web** que te da (termina en `/exec`).
 
-## 5. Pégala en la app de inspecciones
+## 5. Configura el token de seguridad (importante)
+
+Sin este paso, cualquier persona que encuentre la URL del paso 4 podría escribir
+en tu Google Sheet o subir archivos a tu Drive.
+
+1. En el editor de Apps Script, ve a **Configuración del proyecto** (ícono de
+   engranaje, a la izquierda).
+2. Busca la sección **Propiedades del script** → **Añadir propiedad de script**.
+3. Como **Propiedad** escribe exactamente `TOKEN_APP`.
+4. Como **Valor**, pega el mismo texto que aparece en el archivo `js/app.js` de
+   este repositorio en la constante `TOKEN_APP` (una cadena larga de letras y
+   números).
+5. Guarda.
+
+Si más adelante quieres rotar el token: cambia el valor aquí Y en `js/app.js`
+(luego vuelve a publicar la app en GitHub — no hace falta redeployar el Apps
+Script).
+
+## 6. Pégala en la app de inspecciones
 
 1. Abre la app publicada (o `config.html` en local) → **Configuración**.
 2. Pega la URL en "URL del Web App" y presiona **Guardar**.
-3. Presiona **Probar conexión** — debe decir "Conectado correctamente".
+3. Presiona **Probar conexión** — debe decir "Conectado correctamente". Si dice
+   "No autorizado", revisa que el token del paso 5 sea idéntico al de `js/app.js`.
 
-## 6. Cada vez que edites el código
+## 7. Cada vez que edites el código
 
 Si en el futuro cambias `Code.gs` (por ejemplo para agregar una columna nueva):
 
@@ -62,3 +81,17 @@ Si en el futuro cambias `Code.gs` (por ejemplo para agregar una columna nueva):
 - Con estas pestañas puedes armar tablas dinámicas o gráficos directamente en el
   Sheet (por ejemplo: ítems marcados "NO" por estilo, para detectar defectos
   recurrentes de un proveedor).
+- El checklist por SKU y el informe general comparten el mismo campo
+  **Referencia / PO**: úsalo igual en ambos formularios del mismo embarque para
+  poder cruzar la información entre pestañas.
+- Cada envío incluye un "ID envío" único: si un envío se reintenta por mala
+  señal, el script no lo duplica en el Sheet.
+- El script rechaza envíos sin el token correcto, limita cuántas fotos y cuánto
+  texto acepta por envío, y solo guarda archivos que sean imágenes reales.
+- Las fotos y firmas quedan compartidas como "cualquiera con el enlace puede
+  ver" dentro de tu Drive — es una decisión consciente para que el Sheet las
+  muestre sin pedirle login a quien lo revise, pero significa que cualquiera
+  que consiga ese enlace específico podrá verlas. Si necesitas restringirlo a
+  tu dominio de Google Workspace, cambia `DriveApp.Access.ANYONE_WITH_LINK` por
+  `DriveApp.Access.DOMAIN_WITH_LINK` en `guardarFoto()` (requiere que tu cuenta
+  y las del cliente compartan el mismo Workspace).

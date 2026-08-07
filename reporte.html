@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Informe general de inspección · Verde Innova</title>
+<link rel="manifest" href="manifest.json">
 <link rel="stylesheet" href="css/app.css">
 <style>
   .firma-caja { border: 1px dashed var(--linea); border-radius: var(--radio-sm); background: #fff; touch-action: none; width: 100%; height: 130px; display:block; }
@@ -43,6 +44,7 @@
       <div class="campo"><label>Fecha de inspección</label><input type="date" id="g_fecha"></div>
       <div class="campo"><label>Ubicación</label><input type="text" id="g_ubicacion" placeholder="Ej. Zona Libre de Colón"></div>
       <div class="campo"><label>Cliente / Director</label><input type="text" id="g_cliente"></div>
+      <div class="campo"><label>Referencia / PO o número de embarque</label><input type="text" id="g_referencia" placeholder="Igual a la del checklist de este embarque"></div>
       <div class="campo"><label>Consignatario / Comprador</label><input type="text" id="g_consignatario"></div>
       <div class="campo"><label>Tipo de producto</label><input type="text" id="g_tipoProducto" placeholder="Ej. Zapatillas"></div>
       <div class="campo"><label>Cantidad total del envío</label><input type="text" id="g_cantidadTotal" placeholder="Ej. 601 bultos"></div>
@@ -160,6 +162,7 @@
 <div class="barra-inferior">
   <div class="fila">
     <div class="info" id="infoGuardado">Guardado localmente</div>
+    <span id="chipEstadoInforme" class="chip chip-borrador">Borrador</span>
     <button class="boton boton-secundario" id="btnNuevoInforme">Nuevo</button>
     <button class="boton boton-primario" id="btnEnviarInforme">Enviar informe</button>
   </div>

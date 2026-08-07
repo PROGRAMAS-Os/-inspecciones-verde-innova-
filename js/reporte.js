@@ -14,9 +14,10 @@ function informeVacio() {
   const cfg = obtenerConfig();
   return {
     id: generarId('rep'),
+    idEnvio: null,
     general: {
       inspector: cfg.inspectorDefault || '', fecha: new Date().toISOString().slice(0, 10), ubicacion: '',
-      cliente: cfg.clienteDefault || '', consignatario: '', tipoProducto: '', cantidadTotal: '', cajasSeleccionadas: '', contenedorSello: '',
+      cliente: cfg.clienteDefault || '', referencia: '', consignatario: '', tipoProducto: '', cantidadTotal: '', cajasSeleccionadas: '', contenedorSello: '',
     },
     cajas: [],
     muestreo: { base: '', porcentaje: '', estandar: '', metodo: '', notas: '' },
@@ -35,6 +36,15 @@ function guardarInforme(inf) {
   guardarJSON(CLAVE_REPORTE_ACTUAL, inf);
   const el = document.getElementById('infoGuardado');
   if (el) el.textContent = 'Guardado localmente · ' + new Date().toLocaleTimeString('es-PA');
+  actualizarChipEstado();
+}
+
+function actualizarChipEstado() {
+  const chip = document.getElementById('chipEstadoInforme');
+  if (!chip) return;
+  if (informe.estado === 'enviado') { chip.textContent = 'Enviado'; chip.className = 'chip chip-enviado'; return; }
+  if (informe.estado === 'pendiente') { chip.textContent = 'Pendiente de enviar'; chip.className = 'chip chip-pendiente'; return; }
+  chip.textContent = 'Borrador'; chip.className = 'chip chip-borrador';
 }
 
 let informe = obtenerInforme();
@@ -68,6 +78,7 @@ function cargarCamposSimples() {
     ['g_fecha', () => informe.general, 'fecha'],
     ['g_ubicacion', () => informe.general, 'ubicacion'],
     ['g_cliente', () => informe.general, 'cliente'],
+    ['g_referencia', () => informe.general, 'referencia'],
     ['g_consignatario', () => informe.general, 'consignatario'],
     ['g_tipoProducto', () => informe.general, 'tipoProducto'],
     ['g_cantidadTotal', () => informe.general, 'cantidadTotal'],
@@ -123,14 +134,14 @@ function renderCajas() {
     <div class="fila-dinamica" data-idx="${idx}">
       <button class="quitar-fila" data-idx="${idx}" data-tipo="caja">✕</button>
       <div class="rejilla-2">
-        <div class="campo"><label>Caja / bulto No.</label><input type="text" class="cCampo" data-campo="numero" value="${c.numero || ''}"></div>
-        <div class="campo"><label>Condición externa</label><input type="text" class="cCampo" data-campo="condicionExterna" value="${c.condicionExterna || ''}" placeholder="Bien / Regular / Dañada"></div>
-        <div class="campo"><label>Etiquetado (Sí/No)</label><input type="text" class="cCampo" data-campo="etiquetado" value="${c.etiquetado || ''}"></div>
-        <div class="campo"><label>Sellado</label><input type="text" class="cCampo" data-campo="sellado" value="${c.sellado || ''}" placeholder="Intacto / Dañado"></div>
-        <div class="campo"><label>Calidad de la caja</label><input type="text" class="cCampo" data-campo="calidadCaja" value="${c.calidadCaja || ''}" placeholder="Buena / Anomalía"></div>
-        <div class="campo"><label>Condición de la unidad</label><input type="text" class="cCampo" data-campo="condicionUnidad" value="${c.condicionUnidad || ''}"></div>
+        <div class="campo"><label>Caja / bulto No.</label><input type="text" class="cCampo" data-campo="numero" value="${escapeHtml(c.numero)}"></div>
+        <div class="campo"><label>Condición externa</label><input type="text" class="cCampo" data-campo="condicionExterna" value="${escapeHtml(c.condicionExterna)}" placeholder="Bien / Regular / Dañada"></div>
+        <div class="campo"><label>Etiquetado (Sí/No)</label><input type="text" class="cCampo" data-campo="etiquetado" value="${escapeHtml(c.etiquetado)}"></div>
+        <div class="campo"><label>Sellado</label><input type="text" class="cCampo" data-campo="sellado" value="${escapeHtml(c.sellado)}" placeholder="Intacto / Dañado"></div>
+        <div class="campo"><label>Calidad de la caja</label><input type="text" class="cCampo" data-campo="calidadCaja" value="${escapeHtml(c.calidadCaja)}" placeholder="Buena / Anomalía"></div>
+        <div class="campo"><label>Condición de la unidad</label><input type="text" class="cCampo" data-campo="condicionUnidad" value="${escapeHtml(c.condicionUnidad)}"></div>
       </div>
-      <div class="campo"><label>Observaciones</label><input type="text" class="cCampo" data-campo="observaciones" value="${c.observaciones || ''}"></div>
+      <div class="campo"><label>Observaciones</label><input type="text" class="cCampo" data-campo="observaciones" value="${escapeHtml(c.observaciones)}"></div>
     </div>
   `).join('') || '<p class="mensaje-vacio">Sin cajas agregadas.</p>';
 
@@ -162,7 +173,7 @@ function renderFotos() {
       <div class="fotos-lista" data-cat="${cat.clave}">
         ${(informe.fotos[cat.clave] || []).map((f, i) => `
           <div class="foto-mini">
-            <img src="data:${f.mime};base64,${f.base64}">
+            <img src="data:${escapeHtml(f.mime)};base64,${f.base64}">
             <button class="quitar-foto" data-cat="${cat.clave}" data-idx="${i}">✕</button>
           </div>
         `).join('')}
@@ -202,11 +213,11 @@ function renderAnomalias() {
   cont.innerHTML = informe.anomalias.map((a, idx) => `
     <div class="fila-dinamica" data-idx="${idx}">
       <button class="quitar-fila" data-idx="${idx}" data-tipo="anomalia">✕</button>
-      <div class="campo"><label>Descripción</label><textarea class="aCampo" data-campo="descripcion">${a.descripcion || ''}</textarea></div>
+      <div class="campo"><label>Descripción</label><textarea class="aCampo" data-campo="descripcion">${escapeHtml(a.descripcion || '')}</textarea></div>
       <div class="fotos-lista" data-idx-fotos="${idx}">
         ${(a.fotos || []).map((f, i) => `
           <div class="foto-mini">
-            <img src="data:${f.mime};base64,${f.base64}">
+            <img src="data:${escapeHtml(f.mime)};base64,${f.base64}">
             <button class="quitar-foto-anomalia" data-idx="${idx}" data-fidx="${i}">✕</button>
           </div>
         `).join('')}
@@ -264,8 +275,8 @@ function renderMedidas() {
     <div class="fila-dinamica" data-idx="${idx}">
       <button class="quitar-fila" data-idx="${idx}" data-tipo="medida">✕</button>
       <div class="rejilla-2">
-        <div class="campo"><label>Talla / referencia</label><input type="text" class="mCampo" data-campo="etiqueta" value="${m.etiqueta || ''}" placeholder="Ej. Talla 13D"></div>
-        <div class="campo"><label>Medida</label><input type="text" class="mCampo" data-campo="medida" value="${m.medida || ''}" placeholder='Ej. 10.5" x 14" x 5.5"'></div>
+        <div class="campo"><label>Talla / referencia</label><input type="text" class="mCampo" data-campo="etiqueta" value="${escapeHtml(m.etiqueta)}" placeholder="Ej. Talla 13D"></div>
+        <div class="campo"><label>Medida</label><input type="text" class="mCampo" data-campo="medida" value="${escapeHtml(m.medida)}" placeholder='Ej. 10.5" x 14" x 5.5"'></div>
       </div>
     </div>
   `).join('') || '<p class="mensaje-vacio">Sin medidas agregadas.</p>';
@@ -385,6 +396,9 @@ $('btnEnviarInforme').addEventListener('click', async () => {
     document.querySelector('[data-tab="general"]').click();
     return;
   }
+  if (informe.estado === 'enviado') {
+    if (!confirm('Este informe ya se envió antes. ¿Enviarlo de nuevo de todas formas?')) return;
+  }
   const boton = $('btnEnviarInforme');
   boton.disabled = true;
   boton.textContent = 'Enviando…';
@@ -393,13 +407,15 @@ $('btnEnviarInforme').addEventListener('click', async () => {
   boton.disabled = false;
   boton.textContent = 'Enviar informe';
 
+  informe.idEnvio = resultado.idEnvio;
+  informe.estado = resultado.ok ? 'enviado' : 'pendiente';
+  guardarInforme(informe);
+
   if (resultado.ok) {
     alert('Informe enviado correctamente.');
   } else {
     alert('No hay conexión (o falta configurar el Google Sheet). Se guardó en el dispositivo y se enviará solo más tarde, o puedes reintentar desde Configuración.');
   }
-  informe.estado = 'enviado';
-  guardarInforme(informe);
 });
 
 $('btnNuevoInforme').addEventListener('click', () => {
@@ -413,6 +429,7 @@ $('btnNuevoInforme').addEventListener('click', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
   cargarCamposSimples();
+  actualizarChipEstado();
   renderCajas();
   renderFotos();
   renderAnomalias();
