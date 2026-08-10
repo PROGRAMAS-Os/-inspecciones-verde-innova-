@@ -1,109 +1,72 @@
-# Conectar la app a Google Sheets (una sola vez)
+# Conectar el Apps Script (generación del Doc/PDF) con Supabase
 
-Esto crea el "backend" gratuito que recibe cada inspección y la guarda como fila
-en un Google Sheet, incluyendo las fotos (se guardan en una carpeta de tu Drive
-y el Sheet queda con el enlace a cada una).
+Los datos y las fotos de las inspecciones viven en Supabase (ver
+`supabase/schema.sql`). Este Apps Script ya **no** recibe nada del navegador —
+su único trabajo es generar el Google Doc/PDF del informe general cuando
+Supabase le avisa que se creó uno nuevo, y devolverle a Supabase las URLs.
 
-No necesitas instalar nada ni saber programar: todo se hace desde tu navegador,
-en tu propia cuenta de Google. Nosotros (la app) nunca vemos tu contraseña ni tus
-credenciales.
+## 1. Publica (o re-publica) el Apps Script
 
-## 1. Crea el Google Sheet
+1. En el editor de Apps Script del proyecto, pega el contenido de [`Code.gs`](Code.gs).
+2. Revisa que `appsscript.json` tenga los permisos de [`appsscript.json`](appsscript.json) de este repositorio (Docs y Drive).
+3. **Implementar → Gestionar implementaciones** → lápiz en la implementación activa → **Nueva versión** → **Implementar** (o **Nueva implementación** si es la primera vez, tipo **Aplicación web**, ejecutar como tú, acceso **Cualquier usuario**).
+4. Copia la **URL de la aplicación web** (termina en `/exec`).
 
-1. Ve a [sheets.google.com](https://sheets.google.com) y crea una hoja de cálculo nueva.
-2. Ponle un nombre, por ejemplo **"Inspecciones Verde Innova"**.
+## 2. Configura las Propiedades del script
 
-## 2. Abre el editor de Apps Script
+**Configuración del proyecto → Propiedades del script → Añadir propiedad de script**, dos en total:
 
-1. En el Sheet, ve al menú **Extensiones → Apps Script**.
-2. Se abre un editor con un archivo `Código.gs` vacío (o con `function myFunction() {}`).
-3. Borra todo su contenido.
+| Propiedad | Valor |
+|---|---|
+| `SUPABASE_URL` | La URL del proyecto, ej. `https://xxxxx.supabase.co` |
+| `TOKEN_WEBHOOK` | Un texto largo cualquiera que invente (o el que le haya dado Claude), solo lo comparten este script y las funciones RPC del paso 3 |
 
-## 3. Copia el código
+Este script **nunca necesita la `service_role`/secret key** de Supabase: la
+clave publicable ya está escrita en `Code.gs` (constante `SUPABASE_ANON_KEY`,
+la misma que usa `js/app.js` — es segura de tener en código) y el
+`TOKEN_WEBHOOK` hace de autorización extra para las dos únicas operaciones
+que este script necesita del lado de Supabase.
 
-1. Abre el archivo [`Code.gs`](Code.gs) de este repositorio.
-2. Copia **todo** su contenido y pégalo en el editor de Apps Script (reemplazando lo que había).
-3. Guarda con el ícono de disquete o `Ctrl+S`.
-4. En **Configuración del proyecto** (ícono de engranaje) → activa la casilla **"Mostrar el archivo de manifiesto 'appsscript.json' en el editor"**. Abre ese archivo y reemplaza su contenido con el de [`appsscript.json`](appsscript.json) de este repositorio (declara explícitamente los permisos de Sheets, Drive y Docs — sin esto, la generación automática del informe en Doc/PDF falla con un error de permisos aunque todo lo demás funcione).
+## 3. Aviso desde Supabase hacia Apps Script (y de vuelta)
 
-## 4. Publica como aplicación web
+**Supabase → Apps Script:** resuelto en `supabase/schema.sql` (sección 5), un
+trigger en `reportes_generales` que usa `pg_net` para avisarle a este Apps
+Script en cada `INSERT`.
 
-1. Arriba a la derecha, clic en **Implementar → Nueva implementación**.
-2. En "Selecciona el tipo", elige **Aplicación web**.
-3. Configura:
-   - **Ejecutar como:** Yo (tu cuenta)
-   - **Quién tiene acceso:** Cualquier usuario
-4. Clic en **Implementar**.
-5. Google pedirá autorizar permisos (es tu propio script, sobre tu propio Sheet/Drive):
-   - Si aparece "Google no ha verificado esta app", clic en **Configuración avanzada** → **Ir a [nombre del proyecto] (no seguro)** → **Permitir**. Es seguro: es tu propio código, en tu propia cuenta.
-6. Copia la **URL de la aplicación web** que te da (termina en `/exec`).
-7. Antes de usarla, verifica que el permiso de Google Docs haya quedado realmente concedido: en el editor, junto a los botones Ejecutar/Depurar, elige la función `guardarReporteGeneral` (o cualquier función de prueba que llame a `DocumentApp`) y presiona **Ejecutar** una vez. Si Google pide autorización, acéptala — así queda registrada correctamente para la app publicada. (Puedes confirmarlo en [myaccount.google.com/connections](https://myaccount.google.com/connections) → busca este proyecto → debe listar 3 permisos: Sheets, Drive y Docs.)
+(El wizard de Studio en **Database → Webhooks** no funcionó en este proyecto
+porque depende del esquema `supabase_functions`, que no existe aquí — por eso
+se optó por el trigger directo con `pg_net`.)
 
-## 5. Configura el token de seguridad (importante)
+Apps Script no puede leer headers personalizados en `doPost`, por eso el
+token va en la URL en vez de en un header.
 
-Sin este paso, cualquier persona que encuentre la URL del paso 4 podría escribir
-en tu Google Sheet o subir archivos a tu Drive.
+**Apps Script → Supabase:** resuelto en `supabase/schema.sql` (sección 6), dos
+funciones RPC (`webhook_leer_informe`, `webhook_marcar_documento`) que exigen
+el mismo `TOKEN_WEBHOOK` como parámetro antes de leer/escribir nada — así
+`anon` (la clave publicable) solo puede tocar exactamente esas dos
+operaciones, nunca el resto de las tablas.
 
-1. En el editor de Apps Script, ve a **Configuración del proyecto** (ícono de
-   engranaje, a la izquierda).
-2. Busca la sección **Propiedades del script** → **Añadir propiedad de script**.
-3. Como **Propiedad** escribe exactamente `TOKEN_APP`.
-4. Como **Valor**, pega el mismo texto que aparece en el archivo `js/app.js` de
-   este repositorio en la constante `TOKEN_APP` (una cadena larga de letras y
-   números).
-5. Guarda.
-
-Si más adelante quieres rotar el token: cambia el valor aquí Y en `js/app.js`
-(luego vuelve a publicar la app en GitHub — no hace falta redeployar el Apps
-Script).
-
-## 6. Pégala en la app de inspecciones
-
-1. Abre la app publicada (o `config.html` en local) → **Configuración**.
-2. Pega la URL en "URL del Web App" y presiona **Guardar**.
-3. Presiona **Probar conexión** — debe decir "Conectado correctamente". Si dice
-   "No autorizado", revisa que el token del paso 5 sea idéntico al de `js/app.js`.
-
-## 7. Cada vez que edites el código
-
-Si en el futuro cambias `Code.gs` (por ejemplo para agregar una columna nueva):
-
-1. Vuelve a pegar el código actualizado en el editor de Apps Script.
-2. **Implementar → Gestionar implementaciones** → ícono de lápiz en la implementación activa → **Nueva versión** → **Implementar**.
-   (Si creas una implementación totalmente nueva en vez de una nueva versión, la URL cambia y tendrás que actualizarla en Configuración).
+Si rotas `TOKEN_WEBHOOK`, actualiza el literal en `trg_generar_doc_informe()`
+**y** en las dos funciones RPC de la sección 6, con `create or replace
+function`.
 
 ## Qué hace el script
 
-- Crea automáticamente, dentro del mismo Sheet, las pestañas: `Checklist_SKU`,
-  `Reportes_Generales`, `Reportes_Cajas`, `Reportes_Anomalias`, `Reportes_Medidas`
-  y `Reportes_Fotos` — no necesitas crearlas tú.
-- Cada foto se guarda en una carpeta de Google Drive llamada
-  **"Inspecciones Verde Innova - Fotos"**, organizada por inspección, y el Sheet
-  guarda el enlace para verla.
-- Con estas pestañas puedes armar tablas dinámicas o gráficos directamente en el
-  Sheet (por ejemplo: ítems marcados "NO" por estilo, para detectar defectos
-  recurrentes de un proveedor).
-- Cada vez que se envía un **informe general**, el script genera automáticamente
-  un **Google Doc y un PDF** con el formato del informe (información general,
-  cajas, muestreo, hallazgos, conclusión, enlaces a fotos, anomalías, medidas y
-  firmas), los guarda en la misma carpeta del embarque, y deja los enlaces en las
-  columnas "Informe (Doc)" / "Informe (PDF)" de `Reportes_Generales`. Si algo
-  falla al generarlo, el resto del informe igual queda guardado — solo esa
-  columna mostrará el error.
-- Las fotos se suben una por una antes del envío principal de datos (para que
-  funcione mejor con señal débil); si alguna no logra subirse sola, viaja como
-  respaldo dentro del envío principal, así nunca se pierde.
-- El checklist por SKU y el informe general comparten el mismo campo
-  **Referencia / PO**: úsalo igual en ambos formularios del mismo embarque para
-  poder cruzar la información entre pestañas.
-- Cada envío incluye un "ID envío" único: si un envío se reintenta por mala
-  señal, el script no lo duplica en el Sheet.
-- El script rechaza envíos sin el token correcto, limita cuántas fotos y cuánto
-  texto acepta por envío, y solo guarda archivos que sean imágenes reales.
-- Las fotos y firmas quedan compartidas como "cualquiera con el enlace puede
-  ver" dentro de tu Drive — es una decisión consciente para que el Sheet las
-  muestre sin pedirle login a quien lo revise, pero significa que cualquiera
-  que consiga ese enlace específico podrá verlas. Si necesitas restringirlo a
-  tu dominio de Google Workspace, cambia `DriveApp.Access.ANYONE_WITH_LINK` por
-  `DriveApp.Access.DOMAIN_WITH_LINK` en `guardarFoto()` (requiere que tu cuenta
-  y las del cliente compartan el mismo Workspace).
+- Cuando llega el webhook, pide vía RPC (`webhook_leer_informe`) el informe
+  completo con sus cajas, anomalías, medidas y fotos, genera el Doc y el PDF
+  con el mismo formato de siempre, los guarda
+  en una carpeta de Drive por informe (dentro de **"Inspecciones Verde Innova
+  - Fotos"**), y actualiza las columnas `informe_doc`/`informe_pdf` de la fila
+  en Supabase.
+- Si algo falla generando el Doc, esa fila simplemente se queda sin
+  `informe_doc`/`informe_pdf` — los datos ya están seguros en Supabase de
+  todas formas.
+- El Doc/PDF quedan compartidos como "cualquiera con el enlace puede ver" en
+  Drive, igual que las fotos en Supabase Storage.
+- Limita cuántas veces por minuto puede llegar tráfico a esta URL (defensa
+  adicional al token, ya que sigue siendo una URL técnicamente pública).
+
+## Cada vez que edites `Code.gs`
+
+Vuelve a pegar el código y repite el paso 1.3 (**Nueva versión**), no hace
+falta tocar las Propiedades del script ni el webhook si no cambiaron.

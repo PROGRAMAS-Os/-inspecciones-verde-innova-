@@ -50,30 +50,27 @@ function escapeHtml(valor) {
     .replace(/'/g, '&#39;');
 }
 
-// --- Configuración (URL del Apps Script, nombre del inspector por defecto) ---
+// --- Configuración (Supabase, nombre del inspector por defecto) ---
 
-// URL del Google Apps Script ya desplegado — así la app funciona en cualquier
-// dispositivo sin configurar nada primero. Se puede cambiar desde Configuración
-// (por ejemplo si un día se conecta a otro Google Sheet).
-const URL_ENVIO_POR_DEFECTO = 'https://script.google.com/macros/s/AKfycbzTANb5hevGdaRF-ELHpsEuiSmbw0OrPzFavI4EDo9J4nstp3nBffsoBET54eIomk2H/exec';
+// Proyecto de Supabase ya conectado — así la app funciona en cualquier
+// dispositivo sin configurar nada primero. La anon key es segura para usar en
+// el navegador (no es secreta): los permisos reales los controlan las
+// políticas de RLS y las funciones RPC del lado de Supabase, no esta clave.
+const SUPABASE_URL = 'https://nqchzkhzmmnqcgcvgbvz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_8AQTJnknkxhnH5KZpZF8uQ__7KA8tf6';
+const BUCKET_FOTOS = 'fotos-inspecciones';
 
-// Token compartido para filtrar envíos automatizados/spam al backend. No es un
-// secreto real: al ser una app 100% de navegador, cualquiera que revise este
-// archivo puede verlo. Su función es evitar que bots que escanean URLs de Apps
-// Script al azar puedan escribir en el Sheet, y permitir rotarlo sin tener que
-// volver a publicar el Apps Script (solo se cambia aquí y en las propiedades
-// del script). El backend rechaza cualquier envío que no lo incluya.
-const TOKEN_APP = 'a5aeaf8b61cc94f8152460e6a3781cc49b2f6234ef450507';
+const supabaseCliente = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function obtenerConfig() {
-  return leerJSON(CLAVES.CONFIG, { urlEnvio: URL_ENVIO_POR_DEFECTO, inspectorDefault: '', clienteDefault: '' });
+  return leerJSON(CLAVES.CONFIG, { inspectorDefault: '', clienteDefault: '' });
 }
 
 function guardarConfig(config) {
   guardarJSON(CLAVES.CONFIG, config);
 }
 
-// --- Cola de envío: todo lo que no se ha podido mandar al Google Sheet ---
+// --- Cola de envío: todo lo que no se ha podido mandar a Supabase ---
 
 function obtenerCola() {
   return leerJSON(CLAVES.COLA_ENVIO, []);
@@ -90,33 +87,100 @@ function quitarDeCola(id) {
   guardarJSON(CLAVES.COLA_ENVIO, cola);
 }
 
+// Convierte un data URL "data:image/png;base64,...." (de la firma dibujada
+// en el canvas) al formato {base64, mime} que espera subirABucket.
+function dataUrlAFoto(dataUrl) {
+  if (!dataUrl || dataUrl.indexOf('base64,') === -1) return null;
+  const [cabecera, base64] = dataUrl.split('base64,');
+  const mime = (cabecera.match(/data:(.*);/) || [, 'image/png'])[1];
+  return { base64, mime };
+}
+
+// Sube una foto {base64, mime} (o que ya viene como {url}, subida antes) al
+// bucket de Supabase Storage y devuelve su URL pública — el bucket es
+// público de solo-lectura, igual que "cualquiera con el enlace" en Drive.
+async function subirABucket(foto, carpeta, etiqueta) {
+  if (!foto) return '';
+  if (foto.url) return foto.url;
+  if (!foto.base64) return '';
+  const bytes = Uint8Array.from(atob(foto.base64), (c) => c.charCodeAt(0));
+  const extension = foto.mime === 'image/png' ? 'png' : 'jpg';
+  const ruta = `${carpeta}/${etiqueta}_${Date.now()}.${extension}`;
+  const { error } = await supabaseCliente.storage.from(BUCKET_FOTOS).upload(ruta, bytes, {
+    contentType: foto.mime || 'image/jpeg',
+  });
+  if (error) throw error;
+  return supabaseCliente.storage.from(BUCKET_FOTOS).getPublicUrl(ruta).data.publicUrl;
+}
+
+// Sube una lista de fotos y devuelve solo las URLs que lograron subirse
+// (las que fallan se omiten sin perder el resto del envío).
+async function subirListaABucket(fotos, carpeta, prefijo) {
+  const lista = Array.isArray(fotos) ? fotos : [];
+  const urls = [];
+  for (let i = 0; i < lista.length; i++) {
+    try {
+      const url = await subirABucket(lista[i], carpeta, `${prefijo}_${i + 1}`);
+      if (url) urls.push(url);
+    } catch (e) {
+      // se omite esta foto puntual
+    }
+  }
+  return urls;
+}
+
 async function enviarAlBackend(payload) {
-  const { urlEnvio } = obtenerConfig();
-  if (!urlEnvio) {
-    throw new Error('SIN_CONFIGURAR');
+  if (payload.tipo === 'ping') {
+    const { error } = await supabaseCliente.rpc('ping');
+    if (error) throw new Error(error.message);
+    return { ok: true, mensaje: 'pong' };
   }
-  const controlador = new AbortController();
-  // El informe general genera además un Doc/PDF en el servidor (puede tardar
-  // más de 25s con varias fotos/secciones), así que el margen es generoso.
-  const tiempoFuera = setTimeout(() => controlador.abort(), 60000);
-  let respuesta;
-  try {
-    respuesta = await fetch(urlEnvio, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ ...payload, token: TOKEN_APP }),
-      signal: controlador.signal,
-    });
-  } catch (e) {
-    if (e.name === 'AbortError') throw new Error('TIEMPO_AGOTADO');
-    throw e;
-  } finally {
-    clearTimeout(tiempoFuera);
+
+  if (payload.tipo === 'foto') {
+    const url = await subirABucket(payload.foto, payload.carpeta || 'sin_carpeta', `${payload.etiqueta || 'foto'}_${Date.now()}`);
+    if (!url) throw new Error('No se pudo guardar la foto (formato inválido).');
+    return { ok: true, url };
   }
-  if (!respuesta.ok) throw new Error('HTTP_' + respuesta.status);
-  const datos = await respuesta.json().catch(() => ({ ok: true }));
-  if (datos && datos.ok === false) throw new Error(datos.error || 'ERROR_BACKEND');
-  return datos;
+
+  if (payload.tipo === 'checklist_sku') {
+    const carpeta = payload.idEnvio || 'sin_id';
+    const respuestas = await Promise.all((payload.respuestas || []).map(async (r, i) => {
+      const urls = await subirListaABucket(r.fotos, carpeta, 'item' + i);
+      return { ...r, fotos: urls.join(', ') };
+    }));
+    const { error } = await supabaseCliente.rpc('crear_checklist_sku', { datos: { ...payload, respuestas } });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  if (payload.tipo === 'reporte_general') {
+    const carpeta = payload.idEnvio || 'sin_id';
+    const ap = payload.aprobacion || {};
+    const firmaInspectorUrl = await subirABucket(dataUrlAFoto(ap.inspectorFirma), carpeta, 'firma_inspector');
+    const firmaClienteUrl = await subirABucket(dataUrlAFoto(ap.clienteFirma), carpeta, 'firma_cliente');
+
+    const anomalias = await Promise.all((payload.anomalias || []).map(async (a, i) => {
+      const urls = await subirListaABucket(a.fotos, carpeta, 'anomalia' + i);
+      return { ...a, fotos: urls.join(', ') };
+    }));
+
+    const fotos = {};
+    for (const categoria of Object.keys(payload.fotos || {})) {
+      fotos[categoria] = await subirListaABucket(payload.fotos[categoria], carpeta, categoria);
+    }
+
+    const datos = {
+      ...payload,
+      aprobacion: { ...ap, inspectorFirma: firmaInspectorUrl, clienteFirma: firmaClienteUrl },
+      anomalias,
+      fotos,
+    };
+    const { error } = await supabaseCliente.rpc('crear_informe', { datos });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  throw new Error('Tipo de envío no reconocido: ' + payload.tipo);
 }
 
 // Busca, en los borradores locales, el registro que generó este envío y
@@ -140,14 +204,14 @@ function actualizarEstadoLocalPorIdEnvio(idEnvio) {
 }
 
 // Sube una sola foto ya comprimida (via comprimirImagen) a una "carpeta"
-// lógica en Drive (normalmente el idEnvio de la inspección) y devuelve la
+// lógica en Storage (normalmente el idEnvio de la inspección) y devuelve la
 // URL. Se usa para mandar cada foto por separado ANTES del envío principal
 // de datos, así el payload de datos queda liviano y cada foto puede
 // reintentarse por su cuenta con mala señal.
 async function subirFoto(foto, carpeta, etiqueta) {
-  const datos = await enviarAlBackend({ tipo: 'foto', carpeta, etiqueta, foto });
-  if (!datos || !datos.url) throw new Error('SIN_URL');
-  return datos.url;
+  const url = await subirABucket(foto, carpeta, etiqueta);
+  if (!url) throw new Error('SIN_URL');
+  return url;
 }
 
 // Intenta subir cada foto de una lista de forma individual (con un par de

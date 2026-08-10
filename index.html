@@ -22,10 +22,6 @@
 
 <main class="contenedor">
 
-  <div id="avisoConfig" class="aviso aviso-ambar oculto">
-    Falta conectar esta app con tu Google Sheet. <a href="config.html">Configúralo aquí</a> (una sola vez).
-  </div>
-
   <a class="tarjeta tarjeta-enlace" href="checklist.html">
     <div class="tarjeta-opcion">
       <div class="icono">👟</div>
@@ -53,7 +49,18 @@
       <div class="icono">⚙️</div>
       <div class="texto">
         <h2>Configuración</h2>
-        <p>Conectar con Google Sheets, inspector por defecto y envíos pendientes.</p>
+        <p>Inspector por defecto y envíos pendientes.</p>
+      </div>
+      <div class="flecha">›</div>
+    </div>
+  </a>
+
+  <a class="tarjeta tarjeta-enlace" href="dashboard.html">
+    <div class="tarjeta-opcion">
+      <div class="icono">📡</div>
+      <div class="texto">
+        <h2>Panel interno (equipo)</h2>
+        <p>Ver las inspecciones entrando en tiempo real (requiere inicio de sesión del equipo).</p>
       </div>
       <div class="flecha">›</div>
     </div>
@@ -65,10 +72,7 @@
 
 </main>
 
+<script src="js/vendor/supabase.js"></script>
 <script src="js/app.js"></script>
-<script>
-  const cfg = obtenerConfig();
-  if (!cfg.urlEnvio) document.getElementById('avisoConfig').classList.remove('oculto');
-</script>
 </body>
 </html>

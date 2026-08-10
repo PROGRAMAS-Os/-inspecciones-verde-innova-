@@ -2,12 +2,12 @@
 // sin conexión desde el segundo uso en adelante. La primera vez sí necesita
 // internet, como cualquier página web nueva.
 
-const CACHE_NAME = 'vi-inspecciones-v2';
+const CACHE_NAME = 'vi-inspecciones-v3';
 const RUTA_BASE = self.location.pathname.replace(/sw\.js$/, '');
 
 const ARCHIVOS_CASCARON = [
-  '', 'index.html', 'checklist.html', 'reporte.html', 'config.html',
-  'css/app.css', 'js/app.js', 'js/checklist.js', 'js/reporte.js',
+  '', 'index.html', 'checklist.html', 'reporte.html', 'config.html', 'dashboard.html',
+  'css/app.css', 'js/vendor/supabase.js', 'js/app.js', 'js/checklist.js', 'js/reporte.js', 'js/dashboard.js',
 ].map((f) => RUTA_BASE + f);
 
 self.addEventListener('install', (evento) => {
